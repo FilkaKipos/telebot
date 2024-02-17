@@ -1,20 +1,32 @@
 import telebot
 from telebot import types
-
+import sqlite3
+import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
 
 token = '6709073385:AAF-IVeh7I5sD4XCZpNBioZ5VLtpgN2FAwY'
 bot = telebot.TeleBot(token)
 
-# Функция для отображения клавиатуры с кнопками
+conn = sqlite3.connect('db/database.db', check_same_thread=False)
+cursor = conn.cursor()
+
+def check_user_in_db(user_id):
+    cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
+    existing_user = cursor.fetchone()
+    return existing_user is not None
+
+def db_table_val(user_id: int, user_name: str, user_surname: str, username: str):
+    if check_user_in_db(user_id):
+        print(f"Пользователь с ID {user_id} уже присутствует в базе данных.")
+    else:
+        cursor.execute('INSERT INTO users (user_id, user_name, user_surname, username) VALUES (?, ?, ?, ?)', (user_id, user_name, user_surname, username))
+        conn.commit()
+        print(f"Пользователь с ID {user_id} успешно добавлен.")
+
 def send_keyboard(message):
     keyboard = types.ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
-    button1 = types.KeyboardButton('Об отеле:')
-    button2 = types.KeyboardButton('Забронировать номер:')
-    button3 = types.KeyboardButton('Категории номеров:')
-    button4 = types.KeyboardButton('Связь с нами:')
-    button5 = types.KeyboardButton('Где мы находимся:')
-    button6 = types.KeyboardButton('FAQ(Часто задаваемые вопросы)')
-    keyboard.add(button1, button2, button3, button4, button5, button6)
+    buttons = ['Об отеле:', 'Забронировать номер:', 'Категории номеров:', 'Связь с нами:', 'Где мы находимся:', 'FAQ(Часто задаваемые вопросы)']
+    keyboard.add(*[types.KeyboardButton(button) for button in buttons])
     
     bot.send_message(message.chat.id, 'Выберите кнопку:', reply_markup=keyboard)
 
@@ -22,7 +34,12 @@ def send_keyboard(message):
 def start_message(message):
     bot.send_message(message.chat.id, 'Добро пожаловать в отель «EVA»')
     bot.send_message(message.chat.id, 'Я — чат-бот отеля «EVA» в Перми. Я могу предоставить всю необходимую информацию об отеле — воспользуйтесь кнопками ниже:')
-    send_keyboard(message)
+    user_id = message.from_user.id
+    user_name = message.from_user.first_name
+    user_surname = message.from_user.last_name
+    username = message.from_user.username
+
+    db_table_val(user_id=user_id, user_name=user_name, user_surname=user_surname, username=username)
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
@@ -87,5 +104,44 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, 'Мы будем рады избавить Вас от хлопот и сэкономить Ваше время.\nВ отеле имеется гладильный уголок,  где вы сможете самостоятельно воспользоваться утюгом и гладильной доской (услуга предоставляется бесплатно).\nУслуги прачечной предоставляются за дополнительную плату.')
     elif call.data == 'transfer':
         bot.send_message(call.message.chat.id, 'Для Вашего максимального удобства, мы можем организовать  трансфер.\nК Вашим услугам – автомобиль и водитель, который встретит Вас в аэропорту или на ж/д вокзале и доставит в гостиницу.\nСтоимость трансфера:\n800 рублей с ЖД Вокзала.\n1200 рублей с аэропорта.')
+
+# 1. Создание таблицы для отслеживания пользователей
+def create_user_stats_table():
+    cursor.execute('CREATE TABLE IF NOT EXISTS user_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT)')
+    conn.commit()
+
+def create_user_stats_table():
+    cursor.execute('CREATE TABLE IF NOT EXISTS user_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT)')
+    conn.commit()
+
+def update_user_stats(user_id: int, date: str):
+    cursor.execute('INSERT INTO user_stats (user_id, date) VALUES (?, ?)', (user_id, date))
+    conn.commit()
+
+def count_unique_users():
+    cursor.execute('SELECT COUNT(DISTINCT user_id) FROM user_stats')
+    count = cursor.fetchone()[0]
+    return count
+
+def send_daily_stats_to_user():
+    chat_id = None
+    for user in bot.get_chat_administrators('Ezhikpff'):
+        if user.user.id:
+            chat_id = user.user.id
+            break
+
+    if chat_id:
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d')
+        user_count = count_unique_users()
+        stats_message = f"Статистика на {current_time}: Всего уникальных пользователей: {user_count}"
+        bot.send_message(chat_id, stats_message)
+    else:
+        print("Пользователь @Ezhikpff не найден.")
+
+scheduler = BackgroundScheduler(timezone='Europe/Moscow')
+scheduler.add_job(send_daily_stats_to_user, 'cron', hour=19, minute=0, second=0)
+scheduler.start()
+
+create_user_stats_table()
 
 bot.polling(none_stop=True)
