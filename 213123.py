@@ -38,11 +38,13 @@ def start_message(message):
     user_name = message.from_user.first_name
     user_surname = message.from_user.last_name
     username = message.from_user.username
+    send_keyboard(message)
 
     db_table_val(user_id=user_id, user_name=user_name, user_surname=user_surname, username=username)
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
+    send_keyboard(message)
     if message.text == 'Об отеле:':
         bot.send_message(message.chat.id, '\nОтель «EVA» - один из лучших мини-отелей города Пермь, который уделяет особое внимание комфорту гостей.\n\nВ отеле 10 просторных номера площадь от 18 до 22 кв.м., от одноместных и двухместных номеров «Комфорт» и «Бизнес» до семейных.\nКаждый номер можно дополнить детской кроваткой.\n\nМы рады вам каждый день 💞')
         photos = [
@@ -105,43 +107,5 @@ def callback_query(call):
     elif call.data == 'transfer':
         bot.send_message(call.message.chat.id, 'Для Вашего максимального удобства, мы можем организовать  трансфер.\nК Вашим услугам – автомобиль и водитель, который встретит Вас в аэропорту или на ж/д вокзале и доставит в гостиницу.\nСтоимость трансфера:\n800 рублей с ЖД Вокзала.\n1200 рублей с аэропорта.')
 
-# 1. Создание таблицы для отслеживания пользователей
-def create_user_stats_table():
-    cursor.execute('CREATE TABLE IF NOT EXISTS user_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT)')
-    conn.commit()
-
-def create_user_stats_table():
-    cursor.execute('CREATE TABLE IF NOT EXISTS user_stats (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT)')
-    conn.commit()
-
-def update_user_stats(user_id: int, date: str):
-    cursor.execute('INSERT INTO user_stats (user_id, date) VALUES (?, ?)', (user_id, date))
-    conn.commit()
-
-def count_unique_users():
-    cursor.execute('SELECT COUNT(DISTINCT user_id) FROM user_stats')
-    count = cursor.fetchone()[0]
-    return count
-
-def send_daily_stats_to_user():
-    chat_id = None
-    for user in bot.get_chat_administrators('Ezhikpff'):
-        if user.user.id:
-            chat_id = user.user.id
-            break
-
-    if chat_id:
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d')
-        user_count = count_unique_users()
-        stats_message = f"Статистика на {current_time}: Всего уникальных пользователей: {user_count}"
-        bot.send_message(chat_id, stats_message)
-    else:
-        print("Пользователь @Ezhikpff не найден.")
-
-scheduler = BackgroundScheduler(timezone='Europe/Moscow')
-scheduler.add_job(send_daily_stats_to_user, 'cron', hour=19, minute=0, second=0)
-scheduler.start()
-
-create_user_stats_table()
 
 bot.polling(none_stop=True)
