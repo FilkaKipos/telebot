@@ -69,7 +69,7 @@ def handle_message(message):
     
     elif message.text == '📞 Написать нам:':
         bot.send_message(message.chat.id, 'Вы перешли в чат с @EVA_Hotel_Perm 😊')
-        chat_id = '5216025312'  # Имя пользователя (username) для перехода в чат
+        chat_id = '5275475804'  # Имя пользователя (username) для перехода в чат
         try:
             bot.send_message(chat_id, f'Пользователь {message.from_user.first_name} @{message.from_user.username} хочет связаться с вами. Пожалуйста, напишите ему первым.')
         except Exception as e:
@@ -92,7 +92,8 @@ def handle_message(message):
       rules_button = types.InlineKeyboardButton(text='Правила заезда и выезда', callback_data='rules')
       stirka_button = types.InlineKeyboardButton(text='Стирка/глажка', callback_data='stirka')
       transfer_button = types.InlineKeyboardButton(text='Трансфер', callback_data='transfer')
-      keyboard.add(rules_button, stirka_button, transfer_button)
+      zhivotnie_button = types.InlineKeyboardButton(text='Размещение с животными', callback_data='zhivotnie')
+      keyboard.add(rules_button, stirka_button, transfer_button, zhivotnie_button)
       bot.send_message(message.chat.id, 'Часто задаваемые вопросы:', reply_markup=keyboard)
 
     elif message.text == 'Завтраки':
@@ -142,12 +143,14 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, 'Обращаем Ваше внимание, что основной Въезд на парковку находится со стороны ул. Ленина (между домами 54 и 52)')
         bot.send_photo(call.message.chat.id, 'https://eva-hotel.ru/wp-content/uploads/4763-1024x683.jpg')
         bot.send_location(call.message.chat.id, 58.011385, 56.240717)
-
         keyboard = types.InlineKeyboardMarkup()
         parking_button = types.InlineKeyboardButton(text='Информация о парковке', callback_data='parking')
         keyboard.add(parking_button)
 
         bot.send_message(call.message.chat.id, 'Дополнительная информация о парковке:', reply_markup=keyboard)
+
+    elif call.data == 'zhivotnie':
+        bot.send_message(call.message.chat.id, 'Мы рады любым гостям, в том числе вашим пушистым друзьям.\nВ нашем отеле вы можете за дополнительную плату в размере 1000 рублей/сутки, разместиться с животным.\nДля уточнения можете связаться с нами, мы будем ждать вашего обращения.')
 
     elif call.data == 'semeyniy':
         bot.send_message(call.message.chat.id, '\nСемейный номер представляет собой – два смежных номера, общей площадью – 40 м2. С двумя комнатами, в каждой из которых: собственная ванная с душевой кабиной и туалетно-косметическими принадлежностями, двуспальная кровать/2 односпальных кровати, телевизор, письменный стол, мини холодильник, Wi-Fi, кондиционер, сейф.\n\nВсего в отеле 1 номер данной категории.')
